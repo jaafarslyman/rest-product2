@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "AURELIA — أوريليا"
+description = "An Arabic-first customer website for AURELIA, a premium modern Mediterranean restaurant, with responsive storytelling, featured dishes, and visit information."
+version = "1.0.0"
+id = "artifacts/aurelia-restaurant"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22944
+
+[services.development]
+run = "pnpm --filter @workspace/aurelia-restaurant run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/aurelia-restaurant", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/aurelia-restaurant/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22944"
+BASE_PATH = "/"

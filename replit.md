@@ -1,44 +1,47 @@
-# [Project name]
+# AURELIA — أوريليا
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An Arabic-first public website for a modern Mediterranean restaurant, imported from [jaafarslyman/rest-product](https://github.com/jaafarslyman/rest-product).
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/aurelia-restaurant run dev` — run the restaurant website
+- `pnpm --filter @workspace/aurelia-restaurant run typecheck` — typecheck the website
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Optional environment: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_RESTAURANT_SLUG`
+- `VITE_RESTAURANT_SLUG` defaults to `aurelia`; configure the two Supabase variables to load the published profile.
+- Supabase setup and the read-only schema are documented in `artifacts/aurelia-restaurant/supabase/SETUP.md`.
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Website: React, Vite, TypeScript, Tailwind CSS
+- Optional profile source: Supabase REST API with anonymous read access and row-level security
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/aurelia-restaurant/src/App.tsx` — Arabic-first restaurant homepage and profile rendering
+- `artifacts/aurelia-restaurant/src/lib/supabase-profile.ts` — optional, read-only published-profile fetch
+- `artifacts/aurelia-restaurant/public/images/` — bundled visual assets and offline fallback content
+- `artifacts/aurelia-restaurant/supabase/restaurants.sql` — public profile table and RLS policy
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Restaurant details load from Supabase only when both public URL and anon key are configured; bundled content keeps the site usable without them.
+- Browser access is read-only and restricted to published restaurant rows; never expose a Supabase service-role key.
+- Reservation links are informational/contact links, not a reservation submission system.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+The public homepage introduces the restaurant, highlights dishes and dining atmosphere, and displays published address, hours, phone, and Instagram details when available.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Supabase variables prefixed with `VITE_` are visible in the browser; only the public anon/publishable key belongs there.
+- Run `restaurants.sql` in Supabase and publish a row using the configured slug before expecting live profile details.
+- The current Supabase schema does not create a Storage bucket; image fields need public URLs or site-local `/images/` paths.
 
 ## Pointers
 
