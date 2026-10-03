@@ -12,10 +12,41 @@ export type CartLine = {
 };
 
 const STORAGE_KEY = 'aurelia-menu-cart-v1';
+
+function isPriceOption(value: unknown): value is MenuSize {
+  if (typeof value !== 'object' || value === null) return false;
+  const option = value as Record<string, unknown>;
+  return typeof option.id === 'string'
+    && typeof option.name === 'string'
+    && typeof option.price === 'number'
+    && Number.isFinite(option.price)
+    && option.price >= 0;
+}
+
+function isCartLine(value: unknown): value is CartLine {
+  if (typeof value !== 'object' || value === null) return false;
+  const line = value as Record<string, unknown>;
+  return typeof line.key === 'string'
+    && line.key.length > 0
+    && typeof line.dishId === 'string'
+    && typeof line.name === 'string'
+    && typeof line.basePrice === 'number'
+    && Number.isFinite(line.basePrice)
+    && line.basePrice >= 0
+    && typeof line.quantity === 'number'
+    && Number.isInteger(line.quantity)
+    && line.quantity > 0
+    && Array.isArray(line.addons)
+    && line.addons.every(isPriceOption)
+    && (line.size === undefined || isPriceOption(line.size));
+}
+
 function readCart(): CartLine[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) as CartLine[] : [];
+    if (!saved) return [];
+    const parsed: unknown = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed.filter(isCartLine) : [];
   } catch {
     return [];
   }

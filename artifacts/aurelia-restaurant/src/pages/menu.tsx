@@ -91,7 +91,7 @@ function DishDetails({ dish, onClose, onAdd }: { dish: MenuDish; onClose: () => 
         <img className="detail-image" src={dish.image} alt={dish.name} />
         <div className="detail-content">
           <span className="detail-kicker">من مطبخ أوريليا · {categories.find((category) => category.id === dish.categoryId)?.name}</span>
-          <div className="detail-title-row"><h2 id="dish-dialog-title">{dish.name}</h2><span className="detail-price" dir="ltr">{formatPrice(dish.price)}</span></div>
+          <div className="detail-title-row"><h2 id="dish-dialog-title">{dish.name}</h2><span className="detail-price" dir="ltr">{formatPrice(unitPrice)}</span></div>
           <p className="detail-description">{dish.description}</p>
           <p className="detail-ingredients"><strong>المكوّنات:</strong> {dish.ingredients.join('، ')}<br /><strong>مسببات الحساسية:</strong> {dish.allergens.length ? dish.allergens.join('، ') : 'لا يحتوي على مسببات حساسية مدرجة'}</p>
           {!!dish.sizes?.length && <fieldset className="option-group" style={{ border: 0, padding: 0, marginInline: 0 }}>
