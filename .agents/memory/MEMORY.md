@@ -1,1 +1,2 @@
 - [AURELIA menu phase boundary](aurelia-part2-scope.md) — Part 2A menu/cart stay local; Part 2B SQL stays unapplied until the user asks.
+- [Large patch staging](patch-staging.md) — verify tracked files after large replacements; generated sibling temp files may not update the source.
