@@ -1,0 +1,1 @@
+- [AURELIA menu phase boundary](aurelia-part2-scope.md) — Part 2A menu/cart stay local; Part 2B SQL stays unapplied until the user asks.

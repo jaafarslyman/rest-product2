@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Route, Switch } from 'wouter';
+import MenuPage from './pages/menu';
+import NotFound from './pages/not-found';
 import { Menu, X, ArrowLeft, MapPin, Phone, Clock, Instagram } from 'lucide-react';
 import {
   fetchPublishedRestaurant,
@@ -11,7 +14,7 @@ import {
 
 const navigation = [
   { label: 'الرئيسية', href: '#home' },
-  { label: 'القائمة', href: '#menu' },
+  { label: 'القائمة', href: '/menu' },
   { label: 'الحجز', href: '#booking' },
   { label: 'عن أوريليا', href: '#story' },
   { label: 'تواصل معنا', href: '#contact' },
@@ -119,7 +122,7 @@ function Hero({ profile }: { profile: RestaurantProfile | null }) {
         <p className="hero-copy reveal delay-2">نكهات من ضفّتَي المتوسط، وموسم يكتب فصله كل يوم. في أوريليا، لكل طبق حكاية ولكل لقاء مكانه.</p>
         <div className="hero-actions reveal delay-3">
           <a className="button" href="#contact" data-testid="link-book-hero">احجز طاولتك <ArrowLeft size={16} aria-hidden="true" /></a>
-          <a className="button button-ghost" href="#menu" data-testid="link-menu-hero">استكشف القائمة</a>
+          <a className="button button-ghost" href="/menu" data-testid="link-menu-hero">استكشف القائمة</a>
         </div>
       </div>
       <div className="wrap hero-foot" dir="rtl">
@@ -175,7 +178,7 @@ function MenuSection() {
             </article>
           ))}
         </div>
-        <div className="all-menu"><a href="#contact" data-testid="link-full-menu">اسألونا عن قائمة اليوم <ArrowLeft size={14} aria-hidden="true" /></a></div>
+        <div className="all-menu"><a href="/menu" data-testid="link-full-menu">استكشف القائمة الكاملة <ArrowLeft size={14} aria-hidden="true" /></a></div>
       </div>
     </section>
   );
@@ -374,4 +377,14 @@ function Home() {
   );
 }
 
-export default Home;
+function App() {
+  return (
+    <Switch>
+      <Route path="/" component={Home} />
+      <Route path="/menu" component={MenuPage} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+export default App;
