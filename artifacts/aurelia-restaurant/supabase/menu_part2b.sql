@@ -3,6 +3,49 @@
 -- alter the Part 1 restaurants table or grant public write access.
 begin;
 
+-- Upgrade the earlier menu draft in place. Renaming columns preserves the
+-- existing values, and PostgreSQL updates dependent indexes automatically.
+do $$
+declare
+  alias_row record;
+begin
+  for alias_row in
+    select *
+    from (values
+      ('menu_categories', 'sort_order', 'display_order'),
+      ('menu_items', 'sort_order', 'display_order'),
+      ('menu_items', 'image_path', 'image_url'),
+      ('menu_item_options', 'sort_order', 'display_order'),
+      ('menu_item_options', 'option_type', 'selection_type'),
+      ('menu_item_options', 'is_required', 'required'),
+      ('menu_item_option_values', 'sort_order', 'display_order'),
+      ('menu_item_option_values', 'price_delta', 'price_modifier')
+    ) as aliases(table_name, old_name, new_name)
+  loop
+    if exists (
+      select 1
+      from information_schema.columns c
+      where c.table_schema = 'public'
+        and c.table_name = alias_row.table_name
+        and c.column_name = alias_row.old_name
+    ) and not exists (
+      select 1
+      from information_schema.columns c
+      where c.table_schema = 'public'
+        and c.table_name = alias_row.table_name
+        and c.column_name = alias_row.new_name
+    ) then
+      execute format(
+        'alter table public.%I rename column %I to %I',
+        alias_row.table_name,
+        alias_row.old_name,
+        alias_row.new_name
+      );
+    end if;
+  end loop;
+end;
+$$;
+
 create or replace function public.set_menu_updated_at()
 returns trigger
 language plpgsql
@@ -22,11 +65,14 @@ create table if not exists public.menu_categories (
   restaurant_id uuid not null
     references public.restaurants(id) on delete cascade,
   name text not null check (length(trim(name)) > 0),
+  slug text not null check (length(trim(slug)) > 0),
   description text,
   display_order integer not null default 0 check (display_order >= 0),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint menu_categories_restaurant_slug_unique
+    unique (restaurant_id, slug),
   constraint menu_categories_restaurant_name_unique
     unique (restaurant_id, name),
   constraint menu_categories_restaurant_id_unique
@@ -38,13 +84,16 @@ create table if not exists public.menu_items (
   restaurant_id uuid not null
     references public.restaurants(id) on delete cascade,
   category_id uuid not null,
+  slug text not null check (length(trim(slug)) > 0),
   name text not null check (length(trim(name)) > 0),
   description text not null check (length(trim(description)) > 0),
   price numeric(10, 2) not null check (price >= 0),
+  currency_code text not null default 'USD',
   image_url text check (image_url is null or length(trim(image_url)) > 0),
   ingredients text[] not null default '{}'::text[],
   allergens text[] not null default '{}'::text[],
   is_available boolean not null default true,
+  is_published boolean not null default true,
   is_featured boolean not null default false,
   badge text check (badge is null or badge in ('most_ordered', 'new', 'chef_pick')),
   display_order integer not null default 0 check (display_order >= 0),
@@ -52,6 +101,8 @@ create table if not exists public.menu_items (
   updated_at timestamptz not null default now(),
   constraint menu_items_restaurant_category_name_unique
     unique (restaurant_id, category_id, name),
+  constraint menu_items_restaurant_slug_unique
+    unique (restaurant_id, slug),
   constraint menu_items_restaurant_id_unique
     unique (restaurant_id, id),
   constraint menu_items_category_same_restaurant_fk
@@ -101,6 +152,26 @@ create table if not exists public.menu_item_option_values (
     references public.menu_item_options(restaurant_id, id)
     on delete cascade
 );
+
+-- Complete columns on tables created by the earlier draft. Existing rows are
+-- retained; defaults apply only to columns that were genuinely absent.
+alter table public.menu_categories
+  add column if not exists display_order integer not null default 0;
+alter table public.menu_items
+  add column if not exists image_url text,
+  add column if not exists currency_code text not null default 'USD',
+  add column if not exists is_published boolean not null default true,
+  add column if not exists is_featured boolean not null default false,
+  add column if not exists display_order integer not null default 0;
+alter table public.menu_item_options
+  add column if not exists selection_type text not null default 'multiple',
+  add column if not exists required boolean not null default false,
+  add column if not exists max_selections integer not null default 1,
+  add column if not exists display_order integer not null default 0;
+alter table public.menu_item_option_values
+  add column if not exists price_modifier numeric(10, 2) not null default 0,
+  add column if not exists is_available boolean not null default true,
+  add column if not exists display_order integer not null default 0;
 
 create index if not exists menu_categories_public_order_idx
   on public.menu_categories (restaurant_id, is_active, display_order);
@@ -172,7 +243,8 @@ create policy "Public can read items in active public categories"
   on public.menu_items
   for select to anon, authenticated
   using (
-    exists (
+    is_published
+    and exists (
       select 1
       from public.restaurants r
       join public.menu_categories c
@@ -240,31 +312,39 @@ values (
 on conflict (slug) do nothing;
 
 insert into public.menu_categories
-  (restaurant_id, name, description, display_order, is_active)
-select r.id, seed.name, seed.description, seed.display_order, true
+  (restaurant_id, name, slug, description, display_order, is_active)
+select r.id, seed.name, seed.slug, seed.description, seed.display_order, true
 from public.restaurants r
 cross join (
   values
-    ('المقبلات', 'لقيمات أولى تفتح حكاية المائدة.', 10),
-    ('السلطات', 'خضرة موسمية ونكهات من الحديقة.', 20),
-    ('الأطباق الرئيسية', 'أطباق دافئة تُحضّر على مهل.', 30),
-    ('المشاوي', 'نكهة الفحم والأعشاب الطازجة.', 40),
-    ('البيتزا', 'عجين مخمّر وخَبز على نار الحطب.', 50),
-    ('المعكرونة', 'عجين طازج وصلصات متوسطية.', 60),
-    ('الحلويات', 'ختام حلو بلمسة أوريليا.', 70),
-    ('المشروبات', 'رشفات باردة من الفاكهة والأعشاب.', 80)
-) as seed(name, description, display_order)
+    ('المقبلات', 'mezze', 'لقيمات أولى تفتح حكاية المائدة.', 10),
+    ('السلطات', 'salads', 'خضرة موسمية ونكهات من الحديقة.', 20),
+    ('الأطباق الرئيسية', 'main-courses', 'أطباق دافئة تُحضّر على مهل.', 30),
+    ('المشاوي', 'grills', 'نكهة الفحم والأعشاب الطازجة.', 40),
+    ('البيتزا', 'pizza', 'عجين مخمّر وخَبز على نار الحطب.', 50),
+    ('المعكرونة', 'pasta', 'عجين طازج وصلصات متوسطية.', 60),
+    ('الحلويات', 'desserts', 'ختام حلو بلمسة أوريليا.', 70),
+    ('المشروبات', 'drinks', 'رشفات باردة من الفاكهة والأعشاب.', 80)
+) as seed(name, slug, description, display_order)
 where r.slug = 'aurelia'
-on conflict (restaurant_id, name) do nothing;
+  and not exists (
+    select 1
+    from public.menu_categories existing
+    where existing.restaurant_id = r.id
+      and existing.name = seed.name
+  )
+on conflict do nothing;
 
 insert into public.menu_items (
-  restaurant_id, category_id, name, description, price, image_url,
-  ingredients, allergens, is_available, is_featured, badge, display_order
+  restaurant_id, category_id, slug, name, description, price, currency_code,
+  image_url, ingredients, allergens, is_available, is_published, is_featured,
+  badge, display_order
 )
 select
-  r.id, c.id, seed.name, seed.description, seed.price, seed.image_url,
-  seed.ingredients, seed.allergens, true, seed.is_featured, seed.badge,
-  seed.display_order
+  r.id, c.id, regexp_replace(seed.name, '[[:space:]]+', '-', 'g'),
+  seed.name, seed.description, seed.price, 'USD', seed.image_url,
+  seed.ingredients, seed.allergens, true, true, seed.is_featured,
+  seed.badge, seed.display_order
 from public.restaurants r
 cross join (
   values
@@ -443,7 +523,14 @@ join public.menu_categories c
   on c.restaurant_id = r.id
  and c.name = seed.category_name
 where r.slug = 'aurelia'
-on conflict (restaurant_id, category_id, name) do nothing;
+  and not exists (
+    select 1
+    from public.menu_items existing
+    where existing.restaurant_id = r.id
+      and existing.category_id = c.id
+      and existing.name = seed.name
+  )
+on conflict do nothing;
 
 -- Pizza sizes use a modifier relative to the base item price.
 insert into public.menu_item_options (
