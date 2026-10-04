@@ -6,9 +6,11 @@ fails.
 
 1. In the Supabase SQL Editor, run `restaurants.sql` if the Part 1 table does
    not already exist.
-2. Run `menu_part2b.sql` to create the menu tables, read-only public policies,
-   and AURELIA seed data. The script uses an existing `aurelia` restaurant row;
-   if none exists, it inserts one as published without overwriting any existing
+2. Run `menu_part2b.sql` to create or upgrade the menu tables, apply read-only
+   public policies, and add missing AURELIA seed data. It upgrades the earlier
+   menu draft in place by renaming its legacy columns; it does not drop or
+   recreate tables. The script uses an existing `aurelia` restaurant row; if
+   none exists, it inserts one as published without overwriting any existing
    row.
 3. If an existing AURELIA restaurant row is unpublished, publish it in Supabase
    before expecting public menu data. The menu migration does not change an
@@ -24,6 +26,10 @@ read-only policies from `menu_part2b.sql`; it never writes menu data and does
 not need a service-role key. Vite variables are included in the browser bundle,
 so never put a service-role key in a `VITE_` variable. Successful menu reads
 are cached in memory for 45 seconds to avoid repeated requests.
+
+The migration preserves existing menu rows and their publication/availability
+flags. Unpublished items stay hidden; unavailable items remain visible with
+their unavailable status.
 
 The `cover_image_path` and `gallery_image_paths` fields accept public `http(s)`
 image URLs or paths under the site's `/images/` folder. The current schema does

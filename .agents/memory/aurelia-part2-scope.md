@@ -1,10 +1,10 @@
 ---
-name: AURELIA menu phase boundary
-description: The explicit boundary between the local Part 2A menu and a later Part 2B database connection.
+name: AURELIA Supabase menu migration
+description: Legacy schema and scope constraints for the active public-menu Supabase integration.
 ---
 
-Keep the AURELIA Part 2A menu and cart on local sample data and local storage. The Part 2B menu SQL is a draft for the user to apply manually; do not connect the menu to Supabase or execute the migration during Part 2A. Do not add reservations, checkout/order processing, payments, dashboard features, or table identification unless the user explicitly asks for that later work.
+Part 2B is active for the public AURELIA menu; the cart remains local and checkout does not submit orders. The user's Supabase project already has menu tables from an earlier draft. Their legacy columns include `sort_order`, `image_path`, `option_type`, `is_required`, and `price_delta`, plus required category/item slugs. Upgrade these tables in place, preserving rows and publication/availability flags; do not drop or recreate them. The user applies the SQL manually.
 
-**Why:** The user explicitly scoped Part 2A to a local customer menu and deferred the database and ordering work to later phases.
+**Why:** The user reported a missing-column error after running the migration and supplied the live Supabase column/index metadata. Existing menu data may already be present, so preserving it is required.
 
-**How to apply:** Keep the menu and cart client-side in Part 2A. Only wire them to the database as part of an explicit later Part 2B request.
+**How to apply:** Use guarded column renames and additive changes for Supabase schema compatibility. Keep `is_published` distinct from `is_available`: unpublished items remain hidden, while unavailable published items can stay visible. Keep order submission, payments, and restaurant management out of scope unless requested.

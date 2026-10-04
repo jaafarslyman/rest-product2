@@ -1,6 +1,6 @@
 -- AURELIA — Part 2B public menu schema and sample content
--- Run restaurants.sql first. This migration only adds menu tables; it does not
--- alter the Part 1 restaurants table or grant public write access.
+-- Run restaurants.sql first. This migration upgrades menu tables in place;
+-- it does not alter the Part 1 restaurants table or grant public write access.
 begin;
 
 -- Upgrade the earlier menu draft in place. Renaming columns preserves the
