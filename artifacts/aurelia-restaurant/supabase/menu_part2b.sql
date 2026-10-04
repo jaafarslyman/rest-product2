@@ -341,7 +341,17 @@ insert into public.menu_items (
   badge, display_order
 )
 select
-  r.id, c.id, regexp_replace(seed.name, '[[:space:]]+', '-', 'g'),
+  r.id, c.id,
+  'aurelia-seed-' || case seed.category_name
+    when 'المقبلات' then 'mezze'
+    when 'السلطات' then 'salads'
+    when 'الأطباق الرئيسية' then 'main-courses'
+    when 'المشاوي' then 'grills'
+    when 'البيتزا' then 'pizza'
+    when 'المعكرونة' then 'pasta'
+    when 'الحلويات' then 'desserts'
+    when 'المشروبات' then 'drinks'
+  end || '-' || lpad(seed.display_order::text, 2, '0'),
   seed.name, seed.description, seed.price, 'USD', seed.image_url,
   seed.ingredients, seed.allergens, true, true, seed.is_featured,
   seed.badge, seed.display_order
