@@ -6,12 +6,10 @@ fails.
 
 1. In the Supabase SQL Editor, run `restaurants.sql` if the Part 1 table does
    not already exist.
-2. Run `menu_part2b.sql` to create or upgrade the menu tables, apply read-only
-   public policies, and add missing AURELIA seed data. It upgrades the earlier
-   menu draft in place by renaming its legacy columns; it does not drop or
-   recreate tables. The script uses an existing `aurelia` restaurant row; if
-   none exists, it inserts one as published without overwriting any existing
-   row.
+2. For an existing earlier-draft schema, run `menu_part2b_compact.sql`. It
+   upgrades the four existing menu tables in place, applies read-only public
+   policies, and adds one starter dish per category without dropping rows.
+   For a fresh install, use `menu_part2b.sql` instead.
 3. If an existing AURELIA restaurant row is unpublished, publish it in Supabase
    before expecting public menu data. The menu migration does not change an
    existing restaurant's profile or publication state.
