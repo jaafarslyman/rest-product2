@@ -8,7 +8,7 @@ import type {
 } from '../pages/menu-data';
 
 const menuSelect = [
-  'id',
+  'id,',
   'menu_categories(',
   'id,name,description,display_order,is_active,',
   'menu_items(',
@@ -226,7 +226,19 @@ async function requestPublicMenu(): Promise<PublicMenu> {
   });
 
   if (!response.ok) {
-    throw new Error(`Supabase menu request failed with HTTP ${response.status}.`);
+    const errorBody = await response.text();
+    let detail = errorBody.trim();
+    try {
+      const payload = JSON.parse(errorBody) as Record<string, unknown>;
+      const messages = [payload.message, payload.details, payload.hint]
+        .filter((value): value is string => typeof value === 'string' && Boolean(value.trim()));
+      if (messages.length) detail = messages.join(' — ');
+    } catch {
+      // Keep the raw response text when Supabase doesn't return JSON.
+    }
+    throw new Error(
+      `Supabase menu request failed with HTTP ${response.status}${detail ? `: ${detail}` : '.'}`,
+    );
   }
 
   let payload: unknown;
@@ -237,10 +249,29 @@ async function requestPublicMenu(): Promise<PublicMenu> {
   }
   const restaurants = asArray(payload, 'restaurant');
   if (restaurants.length > 1) throw new Error('Supabase returned duplicate restaurant slugs.');
-  if (!restaurants.length) return { categories: [], dishes: [] };
+  if (!restaurants.length) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[public-menu] No visible published restaurant row found for slug "${settings.slug}".`,
+      );
+    }
+    return { categories: [], dishes: [] };
+  }
 
   const restaurant = asRecord(restaurants[0], 'restaurant');
   const categoryRows = asArray(restaurant.menu_categories, 'menu categories');
+  if (import.meta.env.DEV) {
+    const itemCount = categoryRows.reduce((count, value) => {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) return count;
+      const items = (value as JsonRecord).menu_items;
+      return count + (Array.isArray(items) ? items.length : 0);
+    }, 0);
+    console.info('[public-menu] Supabase response rows', {
+      slug: settings.slug,
+      categories: categoryRows.length,
+      items: itemCount,
+    });
+  }
   const parsed = categoryRows
     .map(parseCategory)
     .filter((entry) => entry.category.isActive)
